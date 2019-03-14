@@ -166,6 +166,10 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
                      uint64_t actual_value, uint64_t actual_latency)
 {
     uint64_t pc = seq_pc[seq_no];
+    if (pc_map.find(pc) == pc_map.end()) {
+        seq_pc.erase(seq_no);
+        return;
+    }
     entry_t &info = pc_map[pc];
     info.inflight_count--;
     info.committed_count++;
@@ -178,8 +182,8 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
         info.seq_hist.pop_front();
     }
     info.prediction_result = 2;
-    seq_pc.erase(seq_no);
     info.inflight_info.erase(seq_no);
+    seq_pc.erase(seq_no);
 }
 
 
