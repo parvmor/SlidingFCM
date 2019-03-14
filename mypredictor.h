@@ -10,6 +10,8 @@ using namespace std;
 #define HISTORY_LEN 256
 #define VERIFY_LEN 4
 #define MAX_INFLIGHT 256
+#define AGE_THRESHOLD 2048
+#define AGE_PERIOD 4096
 
 struct entry_t {
     bool eligible;
@@ -25,7 +27,9 @@ struct entry_t {
     uint64_t correct_pred;
     uint64_t incorrect_pred;
     uint8_t prediction_result;
+    uint64_t timestamp;
 };
 
 unordered_map<uint64_t, entry_t> pc_map;
 unordered_map<uint64_t, uint64_t> seq_pc;
+uint64_t timestamp;

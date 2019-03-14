@@ -1,5 +1,6 @@
 #include <cassert>
 #include <iostream>
+#include <vector>
 
 #include "mypredictor.h"
 
@@ -15,6 +16,7 @@ entry_t new_entry()
     info.correct_pred = 0;
     info.incorrect_pred = 0;
     info.prediction_result = 2;
+    info.timestamp = timestamp++;
     return info;
 }
 
@@ -141,6 +143,7 @@ void speculativeUpdate(uint64_t seq_no, bool eligible, uint8_t prediction_result
         assert(info.inflight_info[seq_no].first.first);
         assert(*info.seq_hist.rbegin() == seq_no);
         info.correct_pred++;
+        info.timestamp = timestamp++;
         break;
     case 1:
         // incorrect prediction
@@ -184,11 +187,25 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
     info.prediction_result = 2;
     info.inflight_info.erase(seq_no);
     seq_pc.erase(seq_no);
+    if ((timestamp % AGE_PERIOD) == 0) {
+        vector<uint64_t> keys;
+        for (auto &kv: pc_map) {
+            entry_t &info = kv.second;
+            if (timestamp - info.timestamp > AGE_THRESHOLD) {
+                keys.push_back(kv.first);
+            }
+        }
+        for (uint64_t pc: keys) {
+            pc_map.erase(pc);
+        }
+    }
+    timestamp++;
 }
 
 
 void beginPredictor(int argc_other, char **argv_other)
 {
+    timestamp = 0;
 }
 
 
