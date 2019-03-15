@@ -38,7 +38,7 @@ bool get_inflight_pred(entry_t &info, uint64_t seq_no)
     i = 0;
     // do a naive search as of now
     // can be optimized later on
-    while (i < int(info.val_hist.size()) - VERIFY_LEN - 1) {
+    while (i < int(info.val_hist.size()) - VERIFY_LEN - 1 - info.inflight_count) {
         deque<uint64_t>::iterator it = bit;
         bool match = true;
         int j = 0;
@@ -55,7 +55,8 @@ bool get_inflight_pred(entry_t &info, uint64_t seq_no)
             it++;
         }
         if (match) {
-            if (it == info.val_hist.end()) {
+            it += info.inflight_count;
+            if (it >= info.val_hist.end()) {
                 cerr << "it was at the end of value history\n";
                 exit(EXIT_FAILURE);
             }
@@ -168,9 +169,6 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
                      uint64_t actual_value, uint64_t actual_latency)
 {
     uint64_t pc = seq_pc[seq_no];
-    if (pc == 5169084) {
-        cerr << actual_value << '\n';
-    }
     if (pc_map.find(pc) == pc_map.end()) {
         seq_pc.erase(seq_no);
         return;
@@ -189,9 +187,6 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
     }
     info.prediction_result = 2;
     info.inflight_info.erase(seq_no);
-    /* if (info.incorrect_pred > 20 && info.correct_pred < 20 * info.incorrect_pred) { */
-    /*     pc_map.erase(pc); */
-    /* } */
     seq_pc.erase(seq_no);
     if ((timestamp % AGE_PERIOD) == 0) {
         vector<uint64_t> keys;
