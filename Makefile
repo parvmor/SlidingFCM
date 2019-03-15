@@ -1,5 +1,5 @@
 CC = g++
-OPT = -g
+OPT = -g -O3
 LIBS = -lz -lcvp -lz
 FLAGS = -std=c++14 -L. $(LIBS) $(OPT) -no-pie
 

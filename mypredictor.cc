@@ -143,7 +143,6 @@ void speculativeUpdate(uint64_t seq_no, bool eligible, uint8_t prediction_result
         assert(info.inflight_info[seq_no].first.first);
         assert(*info.seq_hist.rbegin() == seq_no);
         info.correct_pred++;
-        info.timestamp = timestamp++;
         break;
     case 1:
         // incorrect prediction
@@ -169,6 +168,9 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
                      uint64_t actual_value, uint64_t actual_latency)
 {
     uint64_t pc = seq_pc[seq_no];
+    if (pc == 5169084) {
+        cerr << actual_value << '\n';
+    }
     if (pc_map.find(pc) == pc_map.end()) {
         seq_pc.erase(seq_no);
         return;
@@ -176,6 +178,7 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
     entry_t &info = pc_map[pc];
     info.inflight_count--;
     info.committed_count++;
+    info.timestamp = timestamp++;
     if (info.prediction_result != 1) {
         info.val_hist.push_back(actual_value);
         info.seq_hist.push_back(seq_no);
@@ -186,6 +189,9 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
     }
     info.prediction_result = 2;
     info.inflight_info.erase(seq_no);
+    /* if (info.incorrect_pred > 20 && info.correct_pred < 20 * info.incorrect_pred) { */
+    /*     pc_map.erase(pc); */
+    /* } */
     seq_pc.erase(seq_no);
     if ((timestamp % AGE_PERIOD) == 0) {
         vector<uint64_t> keys;

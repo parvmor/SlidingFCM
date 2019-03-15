@@ -7,11 +7,11 @@
 
 using namespace std;
 
-#define HISTORY_LEN 256
-#define VERIFY_LEN 4
+#define HISTORY_LEN 512
+#define VERIFY_LEN 128
 #define MAX_INFLIGHT 256
-#define AGE_THRESHOLD 2048
-#define AGE_PERIOD 4096
+#define AGE_THRESHOLD (1 << 14)
+#define AGE_PERIOD (AGE_THRESHOLD << 17)
 
 struct entry_t {
     bool eligible;
