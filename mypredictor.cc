@@ -9,7 +9,7 @@ using namespace std;
 entry_t new_entry()
 {
     entry_t info;
-    info.eligible = false;
+    info.eligible = true;
     info.occurence_count = 1;
     info.inflight_count  = 1;
     info.committed_count = 0;
@@ -36,6 +36,9 @@ bool get_inflight_pred(entry_t &info, uint64_t seq_no)
     }
     deque<uint64_t>::iterator bit = info.val_hist.begin();
     i = int(info.val_hist.size()) - VERIFY_LEN - int(info.inflight_count) - 2;
+    if (info.val_hist.size() - int(info.inflight_count) - 2 > HISTORY_LEN) {
+        cerr << info.val_hist.size() << ' ' << HISTORY_LEN << ' ' << info.inflight_count << '\n';
+    }
     bit += i;
     // do a naive search as of now
     // can be optimized later on
@@ -83,14 +86,14 @@ bool getPrediction(uint64_t seq_no, uint64_t pc, uint8_t piece, uint64_t& predic
         return false;
     }
 
+    entry_t &info = pc_map[pc];
     // pc not eligible for value prediction
     // eg. store, branch etc.
     if (!pc_map[pc].eligible) {
-        return false;
+        goto finish;
     }
 
     // still building the sliding window
-    entry_t &info = pc_map[pc];
     if (info.committed_count < HISTORY_LEN) {
         goto finish;
     }
@@ -139,12 +142,12 @@ void speculativeUpdate(uint64_t seq_no, bool eligible, uint8_t prediction_result
     case 0:
         // incorrect prediction
         assert(info.inflight_info[seq_no].first.first);
-        info.correct_pred++;
+        info.incorrect_pred++;
         break;
     case 1:
         // correct prediction
         assert(info.inflight_info[seq_no].first.first);
-        info.incorrect_pred++;
+        info.correct_pred++;
         break;
     case 2:
         // chose not to predict
@@ -193,7 +196,6 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
             pc_map.erase(pc);
         }
     }
-    timestamp++;
 }
 
 
