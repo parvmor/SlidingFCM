@@ -35,10 +35,11 @@ bool get_inflight_pred(entry_t &info, uint64_t seq_no)
         rit++;
     }
     deque<uint64_t>::iterator bit = info.val_hist.begin();
-    i = 0;
+    i = int(info.val_hist.size()) - VERIFY_LEN - int(info.inflight_count) - 2;
+    bit += i;
     // do a naive search as of now
     // can be optimized later on
-    while (i < int(info.val_hist.size()) - VERIFY_LEN - 1 - info.inflight_count) {
+    while (i >= 0) {
         deque<uint64_t>::iterator it = bit;
         bool match = true;
         int j = 0;
@@ -63,8 +64,8 @@ bool get_inflight_pred(entry_t &info, uint64_t seq_no)
             info.inflight_info[seq_no] = {{true, -1}, *it};
             return true;
         }
-        i++;
-        bit++;
+        i--;
+        bit--;
     }
     return false;
 }
@@ -90,7 +91,7 @@ bool getPrediction(uint64_t seq_no, uint64_t pc, uint8_t piece, uint64_t& predic
 
     // still building the sliding window
     entry_t &info = pc_map[pc];
-    if (info.committed_count < HISTORY_LEN || info.prediction_result == 0) {
+    if (info.committed_count < HISTORY_LEN) {
         goto finish;
     }
 
@@ -103,10 +104,6 @@ bool getPrediction(uint64_t seq_no, uint64_t pc, uint8_t piece, uint64_t& predic
             info.occurence_count++;
             info.inflight_count++;
             info.inflight_info[seq_no] = {{true, -1}, predicted_value};
-            // queue the predicted value into val_hist
-            // do not remove the head since it was just a prediction
-            info.val_hist.push_back(predicted_value);
-            info.seq_hist.push_back(seq_no);
             return true;
         }
     }
@@ -140,18 +137,13 @@ void speculativeUpdate(uint64_t seq_no, bool eligible, uint8_t prediction_result
     info.eligible = eligible;
     switch (prediction_result) {
     case 0:
-        // correct prediction
+        // incorrect prediction
         assert(info.inflight_info[seq_no].first.first);
-        assert(*info.seq_hist.rbegin() == seq_no);
         info.correct_pred++;
         break;
     case 1:
-        // incorrect prediction
+        // correct prediction
         assert(info.inflight_info[seq_no].first.first);
-        assert(*info.seq_hist.rbegin() == seq_no);
-        // pop value from deque
-        info.seq_hist.pop_back();
-        info.val_hist.pop_back();
         info.incorrect_pred++;
         break;
     case 2:
@@ -177,10 +169,8 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
     info.inflight_count--;
     info.committed_count++;
     info.timestamp = timestamp++;
-    if (info.prediction_result != 1) {
-        info.val_hist.push_back(actual_value);
-        info.seq_hist.push_back(seq_no);
-    }
+    info.val_hist.push_back(actual_value);
+    info.seq_hist.push_back(seq_no);
     if (info.val_hist.size() > HISTORY_LEN) {
         info.val_hist.pop_front();
         info.seq_hist.pop_front();
@@ -188,6 +178,9 @@ void updatePredictor(uint64_t seq_no, uint64_t actual_addr,
     info.prediction_result = 2;
     info.inflight_info.erase(seq_no);
     seq_pc.erase(seq_no);
+    if (info.incorrect_pred >= 3 && info.correct_pred < 50000 * info.incorrect_pred) {
+        pc_map.erase(pc);
+    }
     if ((timestamp % AGE_PERIOD) == 0) {
         vector<uint64_t> keys;
         for (auto &kv: pc_map) {
