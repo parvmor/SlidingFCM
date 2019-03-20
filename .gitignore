@@ -4,3 +4,6 @@ traces/
 logs/
 result*
 out
+temp*
+diff*
+log*
